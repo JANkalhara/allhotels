@@ -71,7 +71,7 @@
 
     <div class="footer-bottom">
 
-        &copy; <?= date('Y') ?> AllHotels.lk — All rights reserved - Created by ViaDesign.
+        &copy; <?= date('Y') ?> AllHotels.lk — All rights reserved - Created by <span><a href="https://www.linkedin.com/in/nadeesha-kalhara-4187863a5?utm_source=share_via&utm_content=profile&utm_medium=member_ios" target="_blank">ViaDesign.</span>
 
     </div>
 
