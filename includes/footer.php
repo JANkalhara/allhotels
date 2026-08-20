@@ -62,14 +62,7 @@
         <div class="footer-links">
 
             <h4>Contact Us</h4>
-
-            <a href="/allhotels/auth/register.php?type=owner">
-                List Your Hotel
-            </a>
-
-            <a href="/allhotels/auth/login.php">
-                Owner Login
-            </a>
+            <p> 
 
         </div>
 
