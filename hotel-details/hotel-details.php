@@ -649,175 +649,54 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- BOOKING CARD -->
 
-            <div class="sidebar-card">
+                <div class="sidebar-card">
 
-                <h3>
-                    Booking
-                </h3>
+                    <h3>Booking</h3>
 
+                    <div class="price-line">
+                        Rs.
+                        <?= number_format(
+                            (float) ($hotel['starting_price'] ?? 0)
+                        ) ?>
+                    </div>
 
-                <div class="price-line">
+                    <p class="footer-note">
+                        Starting price — final cost depends on
+                        function type and guest count.
+                    </p>
 
-                    Rs.
-                    <?= number_format(
-                        (float) ($hotel['starting_price'] ?? 0)
-                    ) ?>
+                    <?php if ((int) ($hotel['is_premium'] ?? 0) === 1): ?>
 
-                </div>
-
-
-                <p class="footer-note">
-
-                    Starting price — final cost depends on
-                    function type and guest count.
-
-                </p>
-
-
-                <?php if (
-                    (int) ($hotel['is_premium'] ?? 0) === 1
-                ): ?>
-
-
-                    <?php if (
-                        is_logged_in()
-                        && isset(current_user()['role'])
-                        && current_user()['role'] === 'customer'
-                    ): ?>
-
-
-                        <form
-                            class="booking-form"
-                            method="POST"
-                            action="/allhotels/api/book-hotel.php"
+                        <a
+                            href="/allhotels/api/book-hotel.php?hotel_id=<?= (int) $hotel['id'] ?>"
+                            class="btn btn-terracotta btn-block"
                         >
+                            Book Now
+                        </a>
 
-                            <input
-                                type="hidden"
-                                name="hotel_id"
-                                value="<?= (int) $hotel['id'] ?>"
-                            >
-
-
-                            <!-- EVENT DATE -->
-
-                            <label for="event_date">
-                                Event Date
-                            </label>
-
-                            <input
-                                type="date"
-                                id="event_date"
-                                name="event_date"
-                                data-min-today
-                                required
-                            >
-
-
-                            <!-- FUNCTION TYPE -->
-
-                            <label for="function_type_id">
-                                Function Type
-                            </label>
-
-                            <select
-                                id="function_type_id"
-                                name="function_type_id"
-                                required
-                            >
-
-                                <?php if (empty($functions)): ?>
-
-                                    <option value="">
-                                        No function types available
-                                    </option>
-
-                                <?php else: ?>
-
-                                    <?php foreach ($functions as $f): ?>
-
-                                        <option
-                                            value="<?= (int) $f['id'] ?>"
-                                        >
-                                            <?= h($f['name']) ?>
-                                        </option>
-
-                                    <?php endforeach; ?>
-
-                                <?php endif; ?>
-
-                            </select>
-
-
-                            <!-- GUEST COUNT -->
-
-                            <label for="guest_count">
-                                Guest Count
-                            </label>
-
-                            <input
-                                type="number"
-                                id="guest_count"
-                                name="guest_count"
-                                min="<?= max(
-                                    1,
-                                    (int) ($hotel['min_guests'] ?? 1)
-                                ) ?>"
-                                <?php if (!empty($hotel['max_guests'])): ?>
-                                    max="<?= (int) $hotel['max_guests'] ?>"
-                                <?php endif; ?>
-                                required
-                            >
-
-
-                            <!-- BOOK -->
-
-                            <button
-                                type="submit"
-                                class="btn btn-terracotta btn-block"
-                            >
-                                Confirm Booking
-                            </button>
-
-                        </form>
-
-
-                    <?php elseif (is_logged_in()): ?>
-
-                        <p class="footer-note">
-                            Only customer accounts can make bookings.
+                        <p class="footer-note" style="margin-top:10px;">
+                            Online booking is available for this Premium hotel.
                         </p>
-
 
                     <?php else: ?>
 
-                        <a
-                            class="btn btn-terracotta btn-block"
-                            href="/allhotels/auth/login.php"
-                        >
-                            Login to Book
-                        </a>
+                        <div class="locked-feature">
+
+                            🔒 Online booking is available
+                            on Premium listings.
+
+                            <br><br>
+
+                            Contact the hotel directly using
+                            the number above.
+
+                        </div>
 
                     <?php endif; ?>
 
+                </div>
 
-                <?php else: ?>
-
-                    <div class="locked-feature">
-
-                        🔒 Online booking is available
-                        on Premium listings.
-
-                        <br><br>
-
-                        Contact the hotel directly using
-                        the number above.
-
-                    </div>
-
-                <?php endif; ?>
-
-            </div>
+            
 
         </div>
 

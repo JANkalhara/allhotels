@@ -25,14 +25,11 @@ $user = current_user();
 
     <link
         href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-    >
+        rel="stylesheet">
 
     <!-- Main CSS -->
-    <link
-        rel="stylesheet"
-        href="/allhotels/css/style.css"
-    >
+    <link rel="stylesheet" href="/allhotels/css/style.css">
+    
 
 </head>
 

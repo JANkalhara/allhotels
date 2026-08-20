@@ -41,6 +41,7 @@ $hotels = $pdo->query($sql)->fetchAll();
 
 $page_title = 'Hotels Control';
 require_once __DIR__ . '/../includes/header.php';
+
 ?>
 <div class="container section">
     <div class="section-head"><div><h2>Hotels Control</h2><p>Audit, approve, reject, or manage the Premium status of listings.</p></div></div>
@@ -64,7 +65,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <?php foreach ($hotels as $h2): ?>
                     <tr>
                         <td><a href="/hotel-details.php?id=<?= (int)$h2['id'] ?>" target="_blank"><?= h($h2['name']) ?></a></td>
-                        <td><?= h($h2['owner_name']) ?><br><span class="footer-note"><?= h($h2['owner_email']) ?></span></td>
+                        <td><?= h($h2['owner_name']) ?></td>
                         <td><?= h($h2['district']) ?></td>
                         <td><?= $h2['is_premium'] ? '★ Premium' : 'Free' ?></td>
                         <td><span class="status-pill status-<?= h($h2['status']) ?>"><?= h($h2['status']) ?></span></td>

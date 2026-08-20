@@ -1,77 +1,290 @@
 <?php
+
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/functions.php';
-require_role('owner');
 
-$user = current_user();
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['booking_id'])) {
-    $bookingId = (int) $_POST['booking_id'];
-    $action = $_POST['action'] === 'confirm' ? 'confirmed' : 'cancelled';
-
-    $stmt = $pdo->prepare("
-        SELECT b.*, h.user_id AS owner_id, h.name AS hotel_name FROM bookings b
-        JOIN hotels h ON h.id = b.hotel_id WHERE b.id = ?
-    ");
-    $stmt->execute([$bookingId]);
-    $booking = $stmt->fetch();
-
-    if ($booking && $booking['owner_id'] == $user['id']) {
-        $upd = $pdo->prepare("UPDATE bookings SET status = ? WHERE id = ?");
-        $upd->execute([$action, $bookingId]);
-
-        notify($pdo, $user['id'], 'booking_update', "Booking for \"{$booking['hotel_name']}\" marked as {$action}.", 'both');
-    }
-    redirect('/owner/bookings.php');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    redirect('/allhotels/index.php');
 }
 
+$hotelId         = (int) ($_POST['hotel_id'] ?? 0);
+$customerName    = trim($_POST['customer_name'] ?? '');
+$customerEmail   = trim($_POST['customer_email'] ?? '');
+$customerPhone   = trim($_POST['customer_phone'] ?? '');
+$functionTypeId  = (int) ($_POST['function_type_id'] ?? 0);
+$eventDate       = trim($_POST['event_date'] ?? '');
+$guestCount      = (int) ($_POST['guest_count'] ?? 0);
+$specialRequest  = trim($_POST['special_request'] ?? '');
+
+
+/*
+|--------------------------------------------------------------------------
+| Validation
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $hotelId <= 0 ||
+    $customerName === '' ||
+    $customerEmail === '' ||
+    $customerPhone === '' ||
+    $functionTypeId <= 0 ||
+    $eventDate === '' ||
+    $guestCount <= 0
+) {
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Please complete all required booking details.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Email
+|--------------------------------------------------------------------------
+*/
+
+if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Please enter a valid email address.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Get Hotel
+|--------------------------------------------------------------------------
+*/
+
 $stmt = $pdo->prepare("
-    SELECT b.*, h.name AS hotel_name, u.full_name AS customer_name, ft.name AS function_name
-    FROM bookings b
-    JOIN hotels h ON h.id = b.hotel_id
-    JOIN users u ON u.id = b.user_id
-    LEFT JOIN function_types ft ON ft.id = b.function_type_id
-    WHERE h.user_id = ?
-    ORDER BY b.created_at DESC
+    SELECT *
+    FROM hotels
+    WHERE id = ?
+      AND status = 'approved'
+      AND is_premium = 1
+    LIMIT 1
 ");
-$stmt->execute([$user['id']]);
-$bookings = $stmt->fetchAll();
 
-$page_title = 'Bookings';
-require_once __DIR__ . '/../includes/header.php';
-?>
-<div class="container section">
-    <div class="section-head"><div><h2>Bookings</h2><p>Reservations made through your Premium listings.</p></div></div>
+$stmt->execute([$hotelId]);
 
-    <div class="dash-layout">
-        <?php include __DIR__ . '/_nav.php'; ?>
-        <div class="panel">
-            <?php if (empty($bookings)): ?>
-                <p class="footer-note">No bookings yet.</p>
-            <?php else: ?>
-            <table class="data-table">
-                <thead><tr><th>Hotel</th><th>Customer</th><th>Function</th><th>Date</th><th>Guests</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody>
-                <?php foreach ($bookings as $b): ?>
-                    <tr>
-                        <td><?= h($b['hotel_name']) ?></td>
-                        <td><?= h($b['customer_name']) ?></td>
-                        <td><?= h($b['function_name'] ?? '—') ?></td>
-                        <td><?= date('d M Y', strtotime($b['event_date'])) ?></td>
-                        <td><?= (int)$b['guest_count'] ?></td>
-                        <td><span class="status-pill status-<?= h($b['status']) ?>"><?= h($b['status']) ?></span></td>
-                        <td class="table-actions">
-                            <?php if ($b['status'] === 'pending'): ?>
-                                <form method="POST"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>"><input type="hidden" name="action" value="confirm"><button class="btn btn-primary btn-sm">Confirm</button></form>
-                                <form method="POST"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>"><input type="hidden" name="action" value="cancel"><button class="btn btn-outline btn-sm">Cancel</button></form>
-                            <?php else: ?>—<?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-            <?php endif; ?>
-        </div>
-    </div>
-</div>
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+$hotel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$hotel) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'This hotel is not available for online booking.'
+    ];
+
+    redirect('/allhotels/index.php');
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Function Type
+|--------------------------------------------------------------------------
+*/
+
+$stmt = $pdo->prepare("
+    SELECT ft.id, ft.name
+    FROM function_types ft
+    INNER JOIN hotel_function_types hft
+        ON hft.function_type_id = ft.id
+    WHERE ft.id = ?
+      AND hft.hotel_id = ?
+    LIMIT 1
+");
+
+$stmt->execute([
+    $functionTypeId,
+    $hotelId
+]);
+
+$functionType = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$functionType) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Invalid function type selected.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Event Date
+|--------------------------------------------------------------------------
+*/
+
+if (strtotime($eventDate) === false) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Invalid event date.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+if ($eventDate < date('Y-m-d')) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Event date cannot be in the past.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Validate Guest Count
+|--------------------------------------------------------------------------
+*/
+
+$minGuests = (int) ($hotel['min_guests'] ?? 1);
+$maxGuests = (int) ($hotel['max_guests'] ?? 0);
+
+if ($guestCount < max(1, $minGuests)) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => "Minimum guest count is {$minGuests}."
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+if ($maxGuests > 0 && $guestCount > $maxGuests) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => "Maximum guest count is {$maxGuests}."
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Check Existing Booking
+|--------------------------------------------------------------------------
+*/
+
+$stmt = $pdo->prepare("
+    SELECT id
+    FROM bookings
+    WHERE hotel_id = ?
+      AND event_date = ?
+      AND status IN ('pending', 'confirmed')
+    LIMIT 1
+");
+
+$stmt->execute([
+    $hotelId,
+    $eventDate
+]);
+
+$existingBooking = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($existingBooking) {
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'This hotel already has a booking request for that date.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Save Booking
+|--------------------------------------------------------------------------
+*/
+
+try {
+
+    $stmt = $pdo->prepare("
+        INSERT INTO bookings
+        (
+            hotel_id,
+            user_id,
+            customer_name,
+            customer_email,
+            customer_phone,
+            function_type_id,
+            event_date,
+            guest_count,
+            special_request,
+            status,
+            created_at
+        )
+        VALUES
+        (
+            ?,
+            NULL,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            'pending',
+            NOW()
+        )
+    ");
+
+    $stmt->execute([
+        $hotelId,
+        $customerName,
+        $customerEmail,
+        $customerPhone,
+        $functionTypeId,
+        $eventDate,
+        $guestCount,
+        $specialRequest
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Success
+    |--------------------------------------------------------------------------
+    */
+
+    $_SESSION['flash'] = [
+        'type' => 'success',
+        'message' => 'Booking request submitted successfully! The hotel owner will review your request.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+
+
+} catch (PDOException $e) {
+
+    error_log('Booking Insert Error: ' . $e->getMessage());
+
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Unable to submit your booking request. Please try again.'
+    ];
+
+    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+}

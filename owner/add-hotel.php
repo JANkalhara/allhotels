@@ -70,60 +70,77 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="section-head"><div><h2>Add a New Hotel</h2><p>Submit your property for admin review. It goes live once approved.</p></div></div>
 
     <div class="dash-layout">
-        <?php include __DIR__ . '/../_nav.php'; ?>
+        <?php include __DIR__ . '/_nav.php'; ?>
         <div class="panel">
             <?php if ($error): ?><div class="alert alert-error"><?= h($error) ?></div><?php endif; ?>
             <?php if ($success): ?><div class="alert alert-success"><?= h($success) ?></div><?php endif; ?>
 
             <form method="POST" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="name">Hotel Name</label>
-                    <input type="text" id="name" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="address">Address</label>
-                    <input type="text" id="address" name="address" required>
-                </div>
-                <div class="form-group">
-                    <label for="district">District / Location</label>
-                    <input type="text" id="district" name="district" placeholder="e.g. Galle" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact_number">Contact Number</label>
-                    <input type="text" id="contact_number" name="contact_number" placeholder="+94 77 123 4567">
-                </div>
-                <div class="form-group">
-                    <label for="starting_price">Starting Price (Rs.)</label>
-                    <input type="number" id="starting_price" name="starting_price" min="0" step="500" required>
-                </div>
-                <div class="form-group" style="display:flex; gap:14px;">
-                    <div style="flex:1;">
-                        <label for="min_guests">Min Guests</label>
-                        <input type="number" id="min_guests" name="min_guests" min="0">
+
+                    <div class="form-row">
+
+                        <div class="form-group">
+                            <label for="name">Hotel Name</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="address">Address</label>
+                            <input type="text" id="address" name="address" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contact_number">Contact Number</label>
+                            <input type="text" id="contact_number" name="contact_number" placeholder="+94 77 123 4567">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="district">District / Location</label>
+                            <input type="text" id="district" name="district" placeholder="e.g. Galle" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="starting_price">Starting Price (Rs.)</label>
+                            <input type="number" id="starting_price" name="starting_price" min="0" step="500" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="min_guests">Min Guests</label>
+                            <input type="number" id="min_guests" name="min_guests" min="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="max_guests">Max Guests</label>
+                            <input type="number" id="max_guests" name="max_guests" min="0">
+                        </div>
+
                     </div>
-                    <div style="flex:1;">
-                        <label for="max_guests">Max Guests</label>
-                        <input type="number" id="max_guests" name="max_guests" min="0">
+
+                    <div class="form-group">
+                        <label>Function Types</label>
+                        <div class="checkbox-grid">
+                            <?php foreach ($functionTypes as $ft): ?>
+                                <label>
+                                    <input type="checkbox" name="functions[]" value="<?= (int)$ft['id'] ?>">
+                                    <?= h($ft['name']) ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Function Types</label>
-                    <div class="checkbox-grid">
-                        <?php foreach ($functionTypes as $ft): ?>
-                            <label><input type="checkbox" name="functions[]" value="<?= (int)$ft['id'] ?>"> <?= h($ft['name']) ?></label>
-                        <?php endforeach; ?>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="4" placeholder="Describe your venue..."></textarea>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" name="description" rows="4" placeholder="Describe your venue..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="main_image">Main Hotel Image</label>
-                    <input type="file" id="main_image" name="main_image" accept="image/*">
-                </div>
-                <button type="submit" class="btn btn-primary">Submit Hotel for Approval</button>
-            </form>
+
+                    <div class="form-group">
+                        <label for="main_image">Main Hotel Image</label>
+                        <input type="file" id="main_image" name="main_image" accept="image/*">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit Hotel for Approval</button>
+
+                </form>
         </div>
     </div>
 </div>
