@@ -1,8 +1,6 @@
 </main>
 
-<!-- ==========================================================
-     FOOTER
-========================================================== -->
+<!--  ============== FOOTER ============= -->
 
 <footer class="site-footer">
 
@@ -43,7 +41,7 @@
         </div>
 
 
-        <!-- PARTNERS -->
+        <!-- PARTNERS 
         <div class="footer-links">
 
             <h4>Partners</h4>
@@ -56,14 +54,14 @@
                 Owner Login
             </a>
 
-        </div>
+        </div>-->
 
         <!-- Contact Us -->
         <div class="footer-links">
 
             <h4>Contact Us</h4>
-            <p> 
-
+            <a href="tel:+94740740890"> 0740 740 890</a>
+            <a href="mailto:sales@allhotels.lk"> sales@allhotels.lk</a>
         </div>
 
     </div>
@@ -80,9 +78,7 @@
 </footer>
 
 
-<!-- ==========================================================
-     MAIN JAVASCRIPT
-========================================================== -->
+<!-- MAIN JAVASCRIPT-->
 
 <script src="/allhotels/js/main.js"></script>
 
@@ -98,9 +94,7 @@
 <?php endif; ?>
 
 
-<!-- ==========================================================
-     HOTEL PHOTO SLIDER
-========================================================== -->
+<!--  HOTEL PHOTO SLIDER-->
 
 <script>
 
@@ -109,9 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const slides = document.querySelectorAll('.slider-image');
     const dots = document.querySelectorAll('.slider-dot');
 
-    /* ---------------------------------------------
-       Stop if there are no slider images
-    --------------------------------------------- */
+    /*  Stop if there are no slider images */
 
     if (slides.length === 0) {
         return;
@@ -122,9 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let sliderTimer;
 
 
-    /* ---------------------------------------------
-       Show selected slide
-    --------------------------------------------- */
+    /* Show selected slide */
 
     function showSlide(index) {
 
@@ -165,9 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /* ---------------------------------------------
-       Next slide
-    --------------------------------------------- */
+    /* Next slide */
 
     function nextSlide() {
 
@@ -184,9 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /* ---------------------------------------------
-       Start automatic slider
-    --------------------------------------------- */
+    /* Start automatic slider*/
 
     function startSlider() {
 
@@ -201,9 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /* ---------------------------------------------
-       Dot click
-    --------------------------------------------- */
+    /* Dot click */
 
     dots.forEach(function (dot, index) {
 
@@ -218,9 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
-    /* ---------------------------------------------
-       Initialize
-    --------------------------------------------- */
+    /* Initialize */
 
     showSlide(0);
 
