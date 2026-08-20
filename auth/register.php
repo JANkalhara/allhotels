@@ -1,6 +1,19 @@
 <?php
+
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/functions.php';
+
+// PHPMailer
+require_once __DIR__ . '/../PHPMailer/src/Exception.php';
+require_once __DIR__ . '/../PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/../PHPMailer/src/SMTP.php';
+
+// Mail configuration
+require_once __DIR__ . '/../config/mail.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 
 if (is_logged_in()) {
     redirect('/allhotels/index.php');
@@ -9,20 +22,26 @@ if (is_logged_in()) {
 $error = null;
 $old = [];
 
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Only Hotel Owner registration
-    $type         = 'owner';
-    $fullName     = trim($_POST['full_name'] ?? '');
-    $email        = trim($_POST['email'] ?? '');
-    $password     = $_POST['password'] ?? '';
-    $phone        = trim($_POST['phone'] ?? '');
-    $whatsapp     = trim($_POST['whatsapp'] ?? '');
+    $type = 'owner';
+
+    $fullName = trim($_POST['full_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $phone = trim($_POST['phone'] ?? '');
+    $whatsapp = trim($_POST['whatsapp'] ?? '');
     $businessAddr = trim($_POST['business_address'] ?? '');
 
     $old = $_POST;
 
-    // Validation
+
+    // =========================
+    // VALIDATION
+    // =========================
+
     if (
         $fullName === '' ||
         $email === '' ||
@@ -30,77 +49,346 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $phone === '' ||
         $businessAddr === ''
     ) {
-        $error = 'Please fill all required fields. Password must be at least 6 characters.';
+
+        $error =
+            'Please fill all required fields. Password must be at least 6 characters.';
+
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+        $error = 'Please enter a valid email address.';
+
     } else {
 
-        // Check existing email
-        $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        // =========================
+        // CHECK USERS TABLE
+        // =========================
+
+        $check = $pdo->prepare(
+            "SELECT id, is_verified
+             FROM users
+             WHERE email = ?"
+        );
+
         $check->execute([$email]);
 
-        if ($check->fetch()) {
+        $existingUser = $check->fetch();
 
-            $error = 'An account with this email already exists.';
+
+        if ($existingUser) {
+
+            if ((int)$existingUser['is_verified'] === 1) {
+
+                $error =
+                    'An account with this email already exists. Please log in.';
+
+            } else {
+
+                $error =
+                    'This email has an existing unverified account. Please complete email verification.';
+            }
 
         } else {
 
-            // Hash password
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+            // =========================
+            // CHECK PENDING REGISTRATION
+            // =========================
 
-            // Verification token
-            $token = bin2hex(random_bytes(16));
-
-            // Create owner account
-            $stmt = $pdo->prepare(
-                "INSERT INTO users 
-                (
-                    full_name,
-                    email,
-                    password_hash,
-                    phone,
-                    whatsapp,
-                    business_address,
-                    role,
-                    verify_token,
-                    is_verified
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            $pendingCheck = $pdo->prepare(
+                "SELECT id
+                 FROM pending_registrations
+                 WHERE email = ?"
             );
 
-            $stmt->execute([
-                $fullName,
-                $email,
-                $hash,
-                $phone,
-                $whatsapp,
-                $businessAddr,
-                $type,
-                $token,
-                1
-            ]);
+            $pendingCheck->execute([$email]);
 
-            $userId = $pdo->lastInsertId();
+            $pending = $pendingCheck->fetch();
 
-            // Welcome notification
-            notify(
-                $pdo,
-                $userId,
-                'welcome',
-                'Welcome to AllHotels.lk! Your Hotel Owner account has been activated.',
-                'both'
+
+            // =========================
+            // PASSWORD HASH
+            // =========================
+
+            $hash = password_hash(
+                $password,
+                PASSWORD_DEFAULT
             );
 
-            $_SESSION['flash_login'] =
-                'Hotel Owner account created successfully. Please log in.';
 
-            redirect('../auth/login.php');
+            // =========================
+            // GENERATE OTP
+            // =========================
+
+            $otp = str_pad(
+                (string) random_int(0, 999999),
+                6,
+                '0',
+                STR_PAD_LEFT
+            );
+
+
+            // OTP expires in 5 minutes
+            $otpExpires = date(
+                'Y-m-d H:i:s',
+                time() + (5 * 60)
+            );
+
+
+            try {
+
+                // =========================
+                // SAVE / UPDATE PENDING USER
+                // =========================
+
+                if ($pending) {
+
+                    // Existing pending registration
+                    // Update registration details and OTP
+
+                    $stmt = $pdo->prepare(
+                        "UPDATE pending_registrations
+                         SET
+                            full_name = ?,
+                            password_hash = ?,
+                            phone = ?,
+                            whatsapp = ?,
+                            business_address = ?,
+                            role = ?,
+                            otp_code = ?,
+                            otp_expires_at = ?
+                         WHERE id = ?"
+                    );
+
+                    $stmt->execute([
+                        $fullName,
+                        $hash,
+                        $phone,
+                        $whatsapp,
+                        $businessAddr,
+                        $type,
+                        $otp,
+                        $otpExpires,
+                        $pending['id']
+                    ]);
+
+                } else {
+
+                    // New pending registration
+
+                    $stmt = $pdo->prepare(
+                        "INSERT INTO pending_registrations
+                        (
+                            full_name,
+                            email,
+                            password_hash,
+                            phone,
+                            whatsapp,
+                            business_address,
+                            role,
+                            otp_code,
+                            otp_expires_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    );
+
+                    $stmt->execute([
+                        $fullName,
+                        $email,
+                        $hash,
+                        $phone,
+                        $whatsapp,
+                        $businessAddr,
+                        $type,
+                        $otp,
+                        $otpExpires
+                    ]);
+                }
+
+
+                // =========================
+                // SEND OTP EMAIL
+                // =========================
+
+                $mail = new PHPMailer(true);
+
+                $mail->isSMTP();
+
+                $mail->Host = MAIL_HOST;
+
+                $mail->SMTPAuth = true;
+
+                $mail->Username = MAIL_USERNAME;
+
+                $mail->Password = MAIL_PASSWORD;
+
+                $mail->SMTPSecure =
+                    PHPMailer::ENCRYPTION_STARTTLS;
+
+                $mail->Port = MAIL_PORT;
+
+
+                $mail->setFrom(
+                    MAIL_FROM_EMAIL,
+                    MAIL_FROM_NAME
+                );
+
+
+                $mail->addAddress(
+                    $email,
+                    $fullName
+                );
+
+
+                $mail->isHTML(true);
+
+                $mail->Subject =
+                    'AllHotels.lk - Email Verification OTP';
+
+
+                $mail->Body = '
+
+                <div style="
+                    font-family: Arial, sans-serif;
+                    max-width: 600px;
+                    margin: auto;
+                    padding: 30px;
+                    background: #f8fafc;
+                ">
+
+                    <div style="
+                        background: white;
+                        padding: 30px;
+                        border-radius: 10px;
+                    ">
+
+                        <h2 style="
+                            color: #2563eb;
+                            margin-bottom: 20px;
+                        ">
+                            Welcome to AllHotels.lk
+                        </h2>
+
+
+                        <p>
+                            Hello
+                            <strong>
+                                ' . htmlspecialchars($fullName) . '
+                            </strong>,
+                        </p>
+
+
+                        <p>
+                            Thank you for registering as a
+                            Hotel Owner on AllHotels.lk.
+                        </p>
+
+
+                        <p>
+                            Please use the following OTP to
+                            verify your email address:
+                        </p>
+
+
+                        <div style="
+                            background: #f1f5f9;
+                            padding: 20px;
+                            text-align: center;
+                            margin: 25px 0;
+                            border-radius: 8px;
+                        ">
+
+                            <span style="
+                                font-size: 32px;
+                                font-weight: bold;
+                                letter-spacing: 8px;
+                                color: #111827;
+                            ">
+                                ' . $otp . '
+                            </span>
+
+                        </div>
+
+
+                        <p>
+                            This OTP will expire in
+                            <strong>5 minutes</strong>.
+                        </p>
+
+
+                        <p style="color:#64748b;">
+                            If you did not create this account,
+                            you can safely ignore this email.
+                        </p>
+
+
+                        <br>
+
+
+                        <p>
+                            Regards,<br>
+                            <strong>AllHotels.lk Team</strong>
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ';
+
+
+                $mail->AltBody =
+                    "Your AllHotels.lk verification OTP is: "
+                    . $otp
+                    . ". This OTP expires in 5 minutes.";
+
+
+                // Send
+                $mail->send();
+
+
+                // =========================
+                // SAVE EMAIL IN SESSION
+                // =========================
+
+                $_SESSION['verify_email'] = $email;
+
+
+                // =========================
+                // REDIRECT OTP PAGE
+                // =========================
+
+                redirect('../auth/verify-otp.php');
+
+
+            } catch (Exception $e) {
+
+                /*
+                 * If email sending fails,
+                 * remove pending registration.
+                 */
+
+                $delete = $pdo->prepare(
+                    "DELETE FROM pending_registrations
+                     WHERE email = ?"
+                );
+
+                $delete->execute([$email]);
+
+
+                $error =
+                    'We could not send the verification email. '
+                    . 'Please check your email settings and try again.';
+            }
         }
     }
 }
 
+
 $page_title = 'Hotel Owner Registration';
 
 require_once __DIR__ . '/../includes/header.php';
+
 ?>
+
 
 <div class="container">
 
@@ -113,6 +401,7 @@ require_once __DIR__ . '/../includes/header.php';
             <p class="auth-sub">
                 Create your Hotel Owner account and list your property on AllHotels.lk.
             </p>
+
 
             <?php if ($error): ?>
 
@@ -258,5 +547,6 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 
 </div>
+
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

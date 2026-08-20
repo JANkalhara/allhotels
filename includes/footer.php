@@ -17,6 +17,7 @@
                 Connecting Sri Lanka's finest venues with the people
                 celebrating life's biggest moments.
             </p>
+            
 
         </div>
 
@@ -182,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             nextSlide();
 
-        }, 5000);
+        }, 6500);
 
     }
 

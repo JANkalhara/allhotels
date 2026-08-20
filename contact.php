@@ -40,9 +40,9 @@ require_once __DIR__ . '/includes/slider.php';
         </div>
         <div class="panel">
             <h3>Reach Us Directly</h3>
-            <div class="info-row"><div class="label">Email</div><div>support@allhotels.lk</div></div>
-            <div class="info-row"><div class="label">Phone</div><div>+94 11 234 5678</div></div>
-            <div class="info-row"><div class="label">Office</div><div>Colombo, Sri Lanka</div></div>
+            <div class="info-row"><div class="label">Email</div><div>sales@allhotels.lk</div></div>
+            <div class="info-row"><div class="label">Phone</div><div>+94 740 740 890</div></div>
+            <div class="info-row"><div class="label">Office</div><div>Bulathsinhala, Sri Lanka</div></div>
         </div>
     </div>
 </div>
