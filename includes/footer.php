@@ -12,7 +12,7 @@
         <div class="footer-brand">
 
             <span class="logo">
-                AllHotels<span>.lk</span>
+                <img src="/allhotels/api/images/logo-white.png" alt="AllHotels.lk Logo">
             </span>
 
             <p>
@@ -58,6 +58,21 @@
 
         </div>
 
+        <!-- Contact Us -->
+        <div class="footer-links">
+
+            <h4>Contact Us</h4>
+
+            <a href="/allhotels/auth/register.php?type=owner">
+                List Your Hotel
+            </a>
+
+            <a href="/allhotels/auth/login.php">
+                Owner Login
+            </a>
+
+        </div>
+
     </div>
 
 
@@ -65,7 +80,7 @@
 
     <div class="footer-bottom">
 
-        &copy; <?= date('Y') ?> AllHotels.lk — All rights reserved.
+        &copy; <?= date('Y') ?> AllHotels.lk — All rights reserved - Created by ViaDesign.
 
     </div>
 

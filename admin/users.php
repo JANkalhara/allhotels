@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $roleFilter = $_GET['role'] ?? 'all';
 $sql = "SELECT * FROM users";
-if (in_array($roleFilter, ['owner','customer','admin'])) {
+if (in_array($roleFilter, ['owner','admin'])) {
     $sql .= " WHERE role = " . $pdo->quote($roleFilter);
 }
 $sql .= " ORDER BY created_at DESC";
@@ -33,8 +33,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="panel">
             <div class="checkbox-grid" style="margin-bottom:20px;">
                 <a class="tag" href="?role=all" style="<?= $roleFilter==='all'?'background:var(--emerald-900);color:#fff;':'' ?>">All</a>
-                <a class="tag" href="?role=owner" style="<?= $roleFilter==='owner'?'background:var(--emerald-900);color:#fff;':'' ?>">Owners</a>
-                <a class="tag" href="?role=customer" style="<?= $roleFilter==='customer'?'background:var(--emerald-900);color:#fff;':'' ?>">Customers</a>
+                <a class="tag" href="?role=owner" style="<?= $roleFilter==='owner'?'background:var(--emerald-900);color:#fff;':'' ?>">Owners</a> 
                 <a class="tag" href="?role=admin" style="<?= $roleFilter==='admin'?'background:var(--emerald-900);color:#fff;':'' ?>">Admins</a>
             </div>
 

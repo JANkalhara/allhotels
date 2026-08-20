@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $page_title = 'Contact Us';
 require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/slider.php';
 ?>
 <div class="container section static-page">
     <h1>Contact Us</h1>

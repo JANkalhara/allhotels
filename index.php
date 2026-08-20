@@ -21,6 +21,7 @@ $hotels = $pdo->query("
 ")->fetchAll();
 
 require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/slider.php';
 ?>
 
 <section class="hero">

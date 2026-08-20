@@ -58,8 +58,7 @@ require_once __DIR__ . '/../includes/header.php';
             </form>
 
             <div class="auth-foot">
-                New to AllHotels.lk? <a href="/auth/register.php?type=customer">Create an account</a><br>
-                Own a hotel? <a href="/auth/register.php?type=owner">List it here</a>
+                New to AllHotels.lk? <a href="../auth/register.php?type=customer">Create an account</a>
             </div>
         </div>
     </div>

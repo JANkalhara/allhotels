@@ -3,6 +3,7 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
 $page_title = 'About Us';
 require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/slider.php';
 ?>
 <div class="container section static-page">
     <h1>About AllHotels.lk</h1>
