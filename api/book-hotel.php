@@ -378,7 +378,7 @@ require_once __DIR__ . '/../includes/header.php';
         >
 
             <a
-                href="/allhotels/hotel-details.php?id=<?= (int) $hotel['id'] ?>"
+                href="/allhotels/hotel-details/hotel-details.php?id=<?= (int) $hotel['id'] ?>"
                 class="btn btn-primary"
             >
                 Back to Hotel

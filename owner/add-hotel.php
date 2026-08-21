@@ -149,88 +149,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 | /allhotels/api/images/
                 */
 
-                $uploadDir = __DIR__ . '/../api/images/';
-
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
-
-
-                $ext = strtolower(
-                    pathinfo(
-                        $_FILES['main_image']['name'],
-                        PATHINFO_EXTENSION
-                    )
-                );
-
-
-                $allowed = [
-                    'jpg',
-                    'jpeg',
-                    'png',
-                    'webp'
-                ];
-
-
-                if (!in_array($ext, $allowed, true)) {
-                    throw new Exception(
-                        'Invalid image format. Please upload JPG, JPEG, PNG or WEBP.'
-                    );
-                }
-
-
-                /*
-                | Unique filename
-                */
-
-                $filename =
-                    'hotel_' .
-                    $hotelId .
-                    '_main_' .
-                    time() .
-                    '_' .
-                    bin2hex(random_bytes(4)) .
-                    '.' .
-                    $ext;
-
-
-                $target = $uploadDir . $filename;
-
-
+            // Main hotel image upload
                 if (
-                    !move_uploaded_file(
-                        $_FILES['main_image']['tmp_name'],
-                        $target
-                    )
+                    isset($_FILES['main_image']) &&
+                    $_FILES['main_image']['error'] === UPLOAD_ERR_OK
                 ) {
 
-                    throw new Exception(
-                        'Failed to upload hotel image.'
+                    // Correct folder:
+                    // allhotels/api/images/
+                    $uploadDir = __DIR__ . '/../api/images/';
+
+                    // Create folder if it does not exist
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+
+                    $originalName = $_FILES['main_image']['name'];
+                    $tmpName      = $_FILES['main_image']['tmp_name'];
+
+                    $ext = strtolower(
+                        pathinfo($originalName, PATHINFO_EXTENSION)
                     );
+
+                    $allowed = [
+                        'jpg',
+                        'jpeg',
+                        'png',
+                        'webp'
+                    ];
+
+                    if (in_array($ext, $allowed, true)) {
+
+                        $filename =
+                            'hotel_' .
+                            $hotelId .
+                            '_main_' .
+                            time() .
+                            '_' .
+                            bin2hex(random_bytes(4)) .
+                            '.' .
+                            $ext;
+
+                        $destination = $uploadDir . $filename;
+
+                        if (move_uploaded_file($tmpName, $destination)) {
+
+                            // Path saved in database
+                            $imagePath = 'api/images/' . $filename;
+
+                            $imgStmt = $pdo->prepare("
+                                INSERT INTO hotel_images
+                                (
+                                    hotel_id,
+                                    image_path,
+                                    is_main
+                                )
+                                VALUES
+                                (?, ?, 1)
+                            ");
+
+                            $imgStmt->execute([
+                                $hotelId,
+                                $imagePath
+                            ]);
+                        }
+                    }
                 }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Save image path to DB
-                |--------------------------------------------------------------------------
-                */
-
-                $imgStmt = $pdo->prepare("
-                    INSERT INTO hotel_images
-                    (
-                        hotel_id,
-                        image_path,
-                        is_main
-                    )
-                    VALUES (?, ?, 1)
-                ");
-
-                $imgStmt->execute([
-                    $hotelId,
-                    'api/images/' . $filename
-                ]);
-            }
 
 
             /*

@@ -253,7 +253,7 @@ require_once __DIR__ . '/../includes/header.php';
         <?php include __DIR__ . '/_nav.php'; ?>
 
 
-        <div class="panel">
+        <div class="panel" style="padding: 18px; font-size: 10px; max-width: 1025px; margin: 5px auto;">
 
             <?php if (!empty($_SESSION['flash'])): ?>
 
@@ -290,7 +290,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                 <div style="overflow-x:auto;">
 
-                    <table class="data-table">
+                    <table class="data-table" style="width: 100%; font-size: 13px;">
 
                         <thead>
 
@@ -441,99 +441,140 @@ require_once __DIR__ . '/../includes/header.php';
 
 
                                 <!-- ACTION -->
+                                <td
+                                    style="
+                                        min-width: 150px;
+                                        width: 150px;
+                                        text-align: center;
+                                        vertical-align: middle;
+                                        white-space: nowrap;
+                                    "
+                                >
 
-                                <td class="table-actions">
+                                    <?php if ($b['status'] === 'pending'): ?>
 
-                                    <?php if (
-                                        $b['status'] === 'pending'
-                                    ): ?>
-
-
-                                        <!-- CONFIRM -->
-
-                                        <form
-                                            method="POST"
-                                            style="display:inline;"
+                                        <div
+                                            style="
+                                                display: flex;
+                                                flex-direction: column;
+                                                gap: 8px;
+                                                align-items: center;
+                                                justify-content: center;
+                                            "
                                         >
 
-                                            <input
-                                                type="hidden"
-                                                name="booking_action"
-                                                value="confirm"
+                                            <!-- CONFIRM -->
+
+                                            <form
+                                                method="POST"
+                                                style="
+                                                    margin: 0;
+                                                    width: 100%;
+                                                "
                                             >
 
-                                            <input
-                                                type="hidden"
-                                                name="hotel_id"
-                                                value="<?= (int) $b['hotel_id'] ?>"
+                                                <input
+                                                    type="hidden"
+                                                    name="booking_action"
+                                                    value="confirm"
+                                                >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="hotel_id"
+                                                    value="<?= (int) $b['hotel_id'] ?>"
+                                                >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="event_date"
+                                                    value="<?= h($b['event_date']) ?>"
+                                                >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="customer_email"
+                                                    value="<?= h($b['customer_email']) ?>"
+                                                >
+
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-primary btn-sm"
+                                                    style="
+                                                        width: 90%;
+                                                        min-width: 85px;
+                                                        text-align: center;
+                                                    "
+                                                    onclick="return confirm('Are you sure you want to confirm this booking?');"
+                                                >
+                                                    Confirm
+                                                </button>
+
+                                            </form>
+
+
+                                            <!-- CANCEL -->
+
+                                            <form
+                                                method="POST"
+                                                style="
+                                                    margin: 0;
+                                                    width: 100%;
+                                                "
                                             >
 
-                                            <input
-                                                type="hidden"
-                                                name="event_date"
-                                                value="<?= h($b['event_date']) ?>"
-                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name="booking_action"
+                                                    value="cancel"
+                                                >
 
-                                            <input
-                                                type="hidden"
-                                                name="customer_email"
-                                                value="<?= h($b['customer_email']) ?>"
-                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name="hotel_id"
+                                                    value="<?= (int) $b['hotel_id'] ?>"
+                                                >
 
-                                            <button
-                                                type="submit"
-                                                class="btn btn-primary btn-sm"
-                                            >
-                                                Confirm
-                                            </button>
+                                                <input
+                                                    type="hidden"
+                                                    name="event_date"
+                                                    value="<?= h($b['event_date']) ?>"
+                                                >
 
-                                        </form>
+                                                <input
+                                                    type="hidden"
+                                                    name="customer_email"
+                                                    value="<?= h($b['customer_email']) ?>"
+                                                >
 
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-outline btn-sm"
+                                                    style="
+                                                        width: 90%;
+                                                        min-width: 85px;
+                                                        text-align: center;
+                                                    "
+                                                    onclick="return confirm('Are you sure you want to cancel this booking?');"
+                                                >
+                                                    Cancel
+                                                </button>
 
-                                        <!-- CANCEL -->
+                                            </form>
 
-                                        <form
-                                            method="POST"
-                                            style="display:inline;"
-                                        >
-
-                                            <input
-                                                type="hidden"
-                                                name="booking_action"
-                                                value="cancel"
-                                            >
-
-                                            <input
-                                                type="hidden"
-                                                name="hotel_id"
-                                                value="<?= (int) $b['hotel_id'] ?>"
-                                            >
-
-                                            <input
-                                                type="hidden"
-                                                name="event_date"
-                                                value="<?= h($b['event_date']) ?>"
-                                            >
-
-                                            <input
-                                                type="hidden"
-                                                name="customer_email"
-                                                value="<?= h($b['customer_email']) ?>"
-                                            >
-
-                                            <button
-                                                type="submit"
-                                                class="btn btn-outline btn-sm"
-                                            >
-                                                Cancel
-                                            </button>
-
-                                        </form>
-
+                                        </div>
 
                                     <?php else: ?>
 
-                                        —
+                                        <span
+                                            style="
+                                                display: inline-block;
+                                                color: #888;
+                                                text-align: center;
+                                            "
+                                        >
+                                            —
+                                        </span>
 
                                     <?php endif; ?>
 
