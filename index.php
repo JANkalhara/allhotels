@@ -79,12 +79,29 @@ require_once __DIR__ . '/includes/slider.php';
             <?php else: foreach ($hotels as $hotel): ?>
                 <article class="hotel-card">
                     <div class="thumb">
-                        <?php if ($hotel['is_premium']): ?><div class="premium-badge">★ Premium</div><?php endif; ?>
-                        <?php if ($hotel['main_image']): ?>
-                            <img src="/<?= h($hotel['main_image']) ?>" alt="<?= h($hotel['name']) ?>">
-                        <?php else: ?>
-                            <span><?= h($hotel['name']) ?></span>
+
+                        <?php if ((int)$hotel['is_premium'] === 1): ?>
+                            <div class="premium-badge">
+                                ★ Premium
+                            </div>
                         <?php endif; ?>
+
+                        <?php if (!empty($hotel['main_image'])): ?>
+
+                            <img
+                                src="/allhotels/<?= h($hotel['main_image']) ?>"
+                                alt="<?= h($hotel['name']) ?>"
+                                loading="lazy"
+                            >
+
+                        <?php else: ?>
+
+                            <span>
+                                <?= h($hotel['name']) ?>
+                            </span>
+
+                        <?php endif; ?>
+
                     </div>
                     <div class="body">
                         <h3><?= h($hotel['name']) ?></h3>
