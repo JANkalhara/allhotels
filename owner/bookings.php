@@ -3,288 +3,563 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/functions.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirect('/allhotels/index.php');
-}
+require_role('owner');
 
-$hotelId         = (int) ($_POST['hotel_id'] ?? 0);
-$customerName    = trim($_POST['customer_name'] ?? '');
-$customerEmail   = trim($_POST['customer_email'] ?? '');
-$customerPhone   = trim($_POST['customer_phone'] ?? '');
-$functionTypeId  = (int) ($_POST['function_type_id'] ?? 0);
-$eventDate       = trim($_POST['event_date'] ?? '');
-$guestCount      = (int) ($_POST['guest_count'] ?? 0);
-$specialRequest  = trim($_POST['special_request'] ?? '');
+$user = current_user();
 
 
 /*
 |--------------------------------------------------------------------------
-| Validation
+| Confirm / Cancel Booking
 |--------------------------------------------------------------------------
 */
 
-if (
-    $hotelId <= 0 ||
-    $customerName === '' ||
-    $customerEmail === '' ||
-    $customerPhone === '' ||
-    $functionTypeId <= 0 ||
-    $eventDate === '' ||
-    $guestCount <= 0
-) {
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Please complete all required booking details.'
-    ];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['booking_action'])) {
 
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
+    $bookingAction = $_POST['booking_action'] ?? '';
+    $hotelId       = (int) ($_POST['hotel_id'] ?? 0);
+    $eventDate     = trim($_POST['event_date'] ?? '');
+    $customerEmail = trim($_POST['customer_email'] ?? '');
 
+    /*
+    |--------------------------------------------------------------------------
+    | Only confirm or cancel
+    |--------------------------------------------------------------------------
+    */
 
-/*
-|--------------------------------------------------------------------------
-| Validate Email
-|--------------------------------------------------------------------------
-*/
+    if (!in_array($bookingAction, ['confirm', 'cancel'], true)) {
 
-if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Please enter a valid email address.'
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
+        redirect('/allhotels/owner/bookings.php');
+    }
 
 
-/*
-|--------------------------------------------------------------------------
-| Get Hotel
-|--------------------------------------------------------------------------
-*/
-
-$stmt = $pdo->prepare("
-    SELECT *
-    FROM hotels
-    WHERE id = ?
-      AND status = 'approved'
-      AND is_premium = 1
-    LIMIT 1
-");
-
-$stmt->execute([$hotelId]);
-
-$hotel = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$hotel) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'This hotel is not available for online booking.'
-    ];
-
-    redirect('/allhotels/index.php');
-}
+    $newStatus = $bookingAction === 'confirm'
+        ? 'confirmed'
+        : 'cancelled';
 
 
-/*
-|--------------------------------------------------------------------------
-| Validate Function Type
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Make sure hotel belongs to current owner
+    |--------------------------------------------------------------------------
+    */
 
-$stmt = $pdo->prepare("
-    SELECT ft.id, ft.name
-    FROM function_types ft
-    INNER JOIN hotel_function_types hft
-        ON hft.function_type_id = ft.id
-    WHERE ft.id = ?
-      AND hft.hotel_id = ?
-    LIMIT 1
-");
-
-$stmt->execute([
-    $functionTypeId,
-    $hotelId
-]);
-
-$functionType = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$functionType) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Invalid function type selected.'
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Validate Event Date
-|--------------------------------------------------------------------------
-*/
-
-if (strtotime($eventDate) === false) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Invalid event date.'
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
-
-if ($eventDate < date('Y-m-d')) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Event date cannot be in the past.'
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Validate Guest Count
-|--------------------------------------------------------------------------
-*/
-
-$minGuests = (int) ($hotel['min_guests'] ?? 1);
-$maxGuests = (int) ($hotel['max_guests'] ?? 0);
-
-if ($guestCount < max(1, $minGuests)) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => "Minimum guest count is {$minGuests}."
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
-
-if ($maxGuests > 0 && $guestCount > $maxGuests) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => "Maximum guest count is {$maxGuests}."
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Check Existing Booking
-|--------------------------------------------------------------------------
-*/
-
-$stmt = $pdo->prepare("
-    SELECT id
-    FROM bookings
-    WHERE hotel_id = ?
-      AND event_date = ?
-      AND status IN ('pending', 'confirmed')
-    LIMIT 1
-");
-
-$stmt->execute([
-    $hotelId,
-    $eventDate
-]);
-
-$existingBooking = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if ($existingBooking) {
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'This hotel already has a booking request for that date.'
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Save Booking
-|--------------------------------------------------------------------------
-*/
-
-try {
-
-    $stmt = $pdo->prepare("
-        INSERT INTO bookings
-        (
-            hotel_id,
-            user_id,
-            customer_name,
-            customer_email,
-            customer_phone,
-            function_type_id,
-            event_date,
-            guest_count,
-            special_request,
-            status,
-            created_at
-        )
-        VALUES
-        (
-            ?,
-            NULL,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            'pending',
-            NOW()
-        )
+    $checkHotel = $pdo->prepare("
+        SELECT id, name
+        FROM hotels
+        WHERE id = ?
+          AND user_id = ?
+        LIMIT 1
     ");
 
-    $stmt->execute([
+    $checkHotel->execute([
         $hotelId,
-        $customerName,
-        $customerEmail,
-        $customerPhone,
-        $functionTypeId,
+        $user['id']
+    ]);
+
+    $ownerHotel = $checkHotel->fetch(PDO::FETCH_ASSOC);
+
+
+    if (!$ownerHotel) {
+
+        $_SESSION['flash'] = [
+            'type' => 'error',
+            'message' => 'You are not authorized to manage this booking.'
+        ];
+
+        redirect('/allhotels/owner/bookings.php');
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find Booking
+    |--------------------------------------------------------------------------
+    |
+    | No booking ID is used because your bookings table
+    | does not have an "id" column.
+    |
+    | We identify the booking using:
+    |
+    | hotel_id
+    | event_date
+    | customer_email
+    |
+    */
+
+    $findBooking = $pdo->prepare("
+        SELECT *
+        FROM bookings
+        WHERE hotel_id = ?
+          AND event_date = ?
+          AND customer_email = ?
+          AND status = 'pending'
+        LIMIT 1
+    ");
+
+    $findBooking->execute([
+        $hotelId,
         $eventDate,
-        $guestCount,
-        $specialRequest
+        $customerEmail
+    ]);
+
+    $booking = $findBooking->fetch(PDO::FETCH_ASSOC);
+
+
+    if (!$booking) {
+
+        $_SESSION['flash'] = [
+            'type' => 'error',
+            'message' => 'Booking request was not found or has already been processed.'
+        ];
+
+        redirect('/allhotels/owner/bookings.php');
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Booking Status
+    |--------------------------------------------------------------------------
+    */
+
+    $update = $pdo->prepare("
+        UPDATE bookings
+        SET status = ?
+        WHERE hotel_id = ?
+          AND event_date = ?
+          AND customer_email = ?
+          AND status = 'pending'
+        LIMIT 1
+    ");
+
+    $update->execute([
+        $newStatus,
+        $hotelId,
+        $eventDate,
+        $customerEmail
     ]);
 
 
     /*
     |--------------------------------------------------------------------------
-    | Success
+    | Success Message
     |--------------------------------------------------------------------------
     */
 
-    $_SESSION['flash'] = [
-        'type' => 'success',
-        'message' => 'Booking request submitted successfully! The hotel owner will review your request.'
-    ];
+    if ($newStatus === 'confirmed') {
 
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+        $_SESSION['flash'] = [
+            'type' => 'success',
+            'message' => 'Booking confirmed successfully.'
+        ];
+
+    } else {
+
+        $_SESSION['flash'] = [
+            'type' => 'success',
+            'message' => 'Booking cancelled successfully.'
+        ];
+    }
 
 
-} catch (PDOException $e) {
-
-    error_log('Booking Insert Error: ' . $e->getMessage());
-
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Unable to submit your booking request. Please try again.'
-    ];
-
-    redirect('/allhotels/hotel-details.php?id=' . $hotelId);
+    redirect('/allhotels/owner/bookings.php');
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Get Owner's Bookings
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+|
+| Do NOT JOIN users table.
+|
+| Customers do not login.
+| Therefore user_id is NULL.
+|
+*/
+
+$stmt = $pdo->prepare("
+    SELECT
+        b.hotel_id,
+        b.user_id,
+        b.customer_name,
+        b.customer_email,
+        b.customer_phone,
+        b.function_type_id,
+        b.event_date,
+        b.guest_count,
+        b.special_request,
+        b.status,
+        b.created_at,
+
+        h.name AS hotel_name,
+
+        ft.name AS function_name
+
+    FROM bookings b
+
+    INNER JOIN hotels h
+        ON h.id = b.hotel_id
+
+    LEFT JOIN function_types ft
+        ON ft.id = b.function_type_id
+
+    WHERE h.user_id = ?
+
+    ORDER BY b.created_at DESC
+");
+
+$stmt->execute([
+    $user['id']
+]);
+
+$bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+/*
+|--------------------------------------------------------------------------
+| Page
+|--------------------------------------------------------------------------
+*/
+
+$page_title = 'Bookings';
+
+require_once __DIR__ . '/../includes/header.php';
+
+?>
+
+<div class="container section">
+
+    <div class="section-head">
+
+        <div>
+
+            <h2>Bookings</h2>
+
+            <p>
+                Manage booking requests received for your hotels.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="dash-layout">
+
+        <?php include __DIR__ . '/_nav.php'; ?>
+
+
+        <div class="panel">
+
+            <?php if (!empty($_SESSION['flash'])): ?>
+
+                <?php
+                $flash = $_SESSION['flash'];
+                unset($_SESSION['flash']);
+                ?>
+
+                <div
+                    class="alert alert-<?= h($flash['type']) ?>"
+                    data-autohide
+                >
+                    <?= h($flash['message']) ?>
+                </div>
+
+            <?php endif; ?>
+
+
+            <?php if (empty($bookings)): ?>
+
+                <div class="empty-state">
+
+                    <h3>No bookings yet</h3>
+
+                    <p>
+                        Customer booking requests will appear here.
+                    </p>
+
+                </div>
+
+
+            <?php else: ?>
+
+
+                <div style="overflow-x:auto;">
+
+                    <table class="data-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Hotel</th>
+
+                                <th>Customer</th>
+
+                                <th>Contact</th>
+
+                                <th>Function</th>
+
+                                <th>Date</th>
+
+                                <th>Guests</th>
+
+                                <th>Request</th>
+
+                                <th>Status</th>
+
+                                <th>Action</th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        <?php foreach ($bookings as $b): ?>
+
+                            <tr>
+
+                                <!-- HOTEL -->
+
+                                <td>
+
+                                    <strong>
+                                        <?= h($b['hotel_name']) ?>
+                                    </strong>
+
+                                </td>
+
+
+                                <!-- CUSTOMER -->
+
+                                <td>
+
+                                    <strong>
+                                        <?= h($b['customer_name']) ?>
+                                    </strong>
+
+                                    <br>
+
+                                    <span class="footer-note">
+                                        <?= h($b['customer_email']) ?>
+                                    </span>
+
+                                </td>
+
+
+                                <!-- PHONE -->
+
+                                <td>
+
+                                    <?= h(
+                                        $b['customer_phone']
+                                    ) ?>
+
+                                </td>
+
+
+                                <!-- FUNCTION -->
+
+                                <td>
+
+                                    <?= h(
+                                        $b['function_name'] ?? '—'
+                                    ) ?>
+
+                                </td>
+
+
+                                <!-- EVENT DATE -->
+
+                                <td>
+
+                                    <?= date(
+                                        'd M Y',
+                                        strtotime(
+                                            $b['event_date']
+                                        )
+                                    ) ?>
+
+                                </td>
+
+
+                                <!-- GUESTS -->
+
+                                <td>
+
+                                    <?= (int) $b['guest_count'] ?>
+
+                                </td>
+
+
+                                <!-- SPECIAL REQUEST -->
+
+                                <td>
+
+                                    <?php if (
+                                        !empty(
+                                            $b['special_request']
+                                        )
+                                    ): ?>
+
+                                        <?= h(
+                                            $b['special_request']
+                                        ) ?>
+
+                                    <?php else: ?>
+
+                                        —
+
+                                    <?php endif; ?>
+
+                                </td>
+
+
+                                <!-- STATUS -->
+
+                                <td>
+
+                                    <span
+                                        class="status-pill status-<?= h(
+                                            $b['status']
+                                        ) ?>"
+                                    >
+                                        <?= h(
+                                            ucfirst(
+                                                $b['status']
+                                            )
+                                        ) ?>
+                                    </span>
+
+                                </td>
+
+
+                                <!-- ACTION -->
+
+                                <td class="table-actions">
+
+                                    <?php if (
+                                        $b['status'] === 'pending'
+                                    ): ?>
+
+
+                                        <!-- CONFIRM -->
+
+                                        <form
+                                            method="POST"
+                                            style="display:inline;"
+                                        >
+
+                                            <input
+                                                type="hidden"
+                                                name="booking_action"
+                                                value="confirm"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="hotel_id"
+                                                value="<?= (int) $b['hotel_id'] ?>"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="event_date"
+                                                value="<?= h($b['event_date']) ?>"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="customer_email"
+                                                value="<?= h($b['customer_email']) ?>"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-primary btn-sm"
+                                            >
+                                                Confirm
+                                            </button>
+
+                                        </form>
+
+
+                                        <!-- CANCEL -->
+
+                                        <form
+                                            method="POST"
+                                            style="display:inline;"
+                                        >
+
+                                            <input
+                                                type="hidden"
+                                                name="booking_action"
+                                                value="cancel"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="hotel_id"
+                                                value="<?= (int) $b['hotel_id'] ?>"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="event_date"
+                                                value="<?= h($b['event_date']) ?>"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="customer_email"
+                                                value="<?= h($b['customer_email']) ?>"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-outline btn-sm"
+                                            >
+                                                Cancel
+                                            </button>
+
+                                        </form>
+
+
+                                    <?php else: ?>
+
+                                        —
+
+                                    <?php endif; ?>
+
+                                </td>
+
+                            </tr>
+
+                        <?php endforeach; ?>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            <?php endif; ?>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<?php
+
+require_once __DIR__ . '/../includes/footer.php';
+
+?>
